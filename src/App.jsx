@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import './App.css';
 
 function App() {
-  const [ipAddress, setIpAddress] = useState('');
+  const [ipAddress, setIpAddress] = useState('10.48.80.122');
   const [port, setPort] = useState('22');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [token, setToken] = useState(localStorage.getItem('authToken') || '');
+
+  const BACKEND_URL = 'http://10.48.80.122:8000';
 
   const handleConnect = async (e) => {
     e.preventDefault();
@@ -25,7 +28,7 @@ function App() {
       }
 
       // Send SSH connection request to backend
-      const response = await fetch('/api/ssh-connect', {
+      const response = await fetch(`${BACKEND_URL}/api/ssh-connect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,21 +45,53 @@ function App() {
 
       if (response.ok) {
         setSuccess('Connected successfully!');
+        // Save token to localStorage
+        localStorage.setItem('authToken', data.token);
+        setToken(data.token);
+        
         // Clear fields on success
-        setIpAddress('');
+        setIpAddress('10.48.80.122');
         setPort('22');
         setUsername('');
         setPassword('');
+
+        // Redirect after 2 seconds
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 2000);
       } else {
-        setError(data.message || 'Connection failed. Please check your credentials.');
+        setError(data.detail || data.message || 'Connection failed. Please check your credentials.');
       }
     } catch (err) {
-      setError('Error connecting to server. Please try again.');
+      setError('Error connecting to server. Make sure the backend is running at ' + BACKEND_URL);
       console.error('Connection error:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  // If already logged in
+  if (token) {
+    return (
+      <div className="login-container">
+        <div className="login-box">
+          <h1 className="login-title">Welcome! 🎉</h1>
+          <p style={{ color: '#b0b0b0', textAlign: 'center', marginBottom: '20px' }}>
+            You are logged in
+          </p>
+          <button 
+            className="connect-button"
+            onClick={() => {
+              localStorage.removeItem('authToken');
+              setToken('');
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container">
@@ -69,7 +104,7 @@ function App() {
             <input
               id="ip-address"
               type="text"
-              placeholder="192.168.1.100"
+              placeholder="10.48.80.122"
               value={ipAddress}
               onChange={(e) => setIpAddress(e.target.value)}
               disabled={loading}
@@ -123,6 +158,17 @@ function App() {
             {loading ? 'Connecting...' : 'Connect'}
           </button>
         </form>
+
+        <p style={{ 
+          color: '#666', 
+          fontSize: '12px', 
+          textAlign: 'center', 
+          marginTop: '20px',
+          borderTop: '1px solid #333',
+          paddingTop: '15px'
+        }}>
+          Backend URL: {BACKEND_URL}
+        </p>
       </div>
     </div>
   );
